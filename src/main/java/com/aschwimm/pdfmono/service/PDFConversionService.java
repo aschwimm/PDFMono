@@ -1,9 +1,14 @@
 package com.aschwimm.pdfmono.service;
 
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
-
+import java.util.List;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -39,4 +44,24 @@ public class PDFConversionService {
         g2d.dispose();
         return grayImage;
     }
+    private PDDocument createDocumentFromImages(List<BufferedImage> images) throws IOException {
+        PDDocument document = new PDDocument();
+        for(BufferedImage image : images) {
+            PDPage page = new PDPage(new PDRectangle(image.getWidth(), image.getHeight()));
+            document.addPage(page);
+
+            PDImageXObject pdImage = LosslessFactory.createFromImage(document, image);
+
+            try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
+                contentStream.drawImage(pdImage, 0,0);
+            }
+        }
+        return document;
+    }
+    private void saveDocument(PDDocument document, String outputPath) throws IOException {
+        try (document) {
+            document.save(outputPath);
+        }
+    }
+
 }
