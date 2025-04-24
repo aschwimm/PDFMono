@@ -3,6 +3,7 @@ import static org.assertj.core.api.Assertions.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
@@ -16,12 +17,14 @@ public class PDFConversionServiceTest {
 
 
     @Test
-    void shouldThrowIOExceptionWhenLoadingInvalidPdfPath() {
+    void shouldReturnFalseWhenLoadingInvalidPdfPath() {
         // Arrange
-
+        String invalidPath = "invalid/path/color_sample_input.pdf";
+        String outputPath = Paths.get("src/test/resources/output/black_and_white_sample_output.pdf").toAbsolutePath().toString();
         // Act
-
+        boolean result = pdfConversionService.convertToBlackAndWhite(invalidPath, outputPath);
         // Assert
+        assertThat(result).isFalse();
     }
 
     @Test
