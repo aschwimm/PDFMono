@@ -15,7 +15,9 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-
+/*
+TODO: The threshold is incorrect for monochrome, I think this would work better if the PDF was converted to grayscale
+ */
 public class PDFConversionService {
     public boolean convertToBlackAndWhite(String inputFile, String outputFile) {
         File input = new File(inputFile);
