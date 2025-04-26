@@ -1,9 +1,5 @@
 # Changelog
 
-## [Unreleased]
-### Fixed
-- Fixed bug with grayscale conversion in PDFs, ensuring correct monochrome rendering.
-
 ## [1.0.1] - 2025-04-25
 ### Fixed
 - Corrected grayscale conversion for PDFs to handle color text correctly.
