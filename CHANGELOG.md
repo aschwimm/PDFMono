@@ -1,5 +1,13 @@
 # Changelog
 
+### Unreleased
+- **Bug Fix**: Issue with fonts being replaced during pdf conversion
+  - Fonts present in the pdf are replaced with approximations when the original font is not
+    present
+  - **Fix**: This issue occurs because the PDFs are converted to images and rasterized
+    I think this can be solved by parsing each page's content stream and, grabbing the appropriate operators(rg, RG, k, K)
+    and converting their operands to grayscale
+
 ## [1.0.1] - 2025-04-25
 ### Fixed
 - Corrected grayscale conversion for PDFs to handle color text correctly.
