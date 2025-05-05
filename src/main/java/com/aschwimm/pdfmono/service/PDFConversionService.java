@@ -1,5 +1,6 @@
 package com.aschwimm.pdfmono.service;
 
+import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -51,12 +52,12 @@ public class PDFConversionService {
             return false;
         }
     }
-
+    // PDDocument load() method is replaced with Loader class to separate concerns
     private PDDocument loadDocument(String inputFile) throws IOException {
 
         try{
             File file = new File(inputFile);
-            return PDDocument.load(file);
+            return Loader.loadPDF(file);
         } catch(IOException e) {
             System.err.println("Error loading PDF: " + e.getMessage());
             throw e;
@@ -67,6 +68,7 @@ public class PDFConversionService {
         BufferedImage colorImage = renderer.renderImageWithDPI(pageIndex, dpi, ImageType.RGB);
         return applyBlackAndWhiteConversion(colorImage);
     }
+
     private BufferedImage applyBlackAndWhiteConversion(BufferedImage colorImage) {
         BufferedImage grayImage = new BufferedImage(
                 colorImage.getWidth(),
