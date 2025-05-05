@@ -1,10 +1,16 @@
 package com.aschwimm.pdfmono.service;
 
 import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.contentstream.operator.Operator;
+import org.apache.pdfbox.cos.COSFloat;
+import org.apache.pdfbox.cos.COSNumber;
+import org.apache.pdfbox.pdfparser.PDFStreamParser;
+import org.apache.pdfbox.pdfwriter.ContentStreamWriter;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.common.PDStream;
 import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.rendering.ImageType;
@@ -12,6 +18,7 @@ import org.apache.pdfbox.rendering.PDFRenderer;
 
 import java.awt.color.ColorSpace;
 import java.awt.image.ColorConvertOp;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.awt.*;
@@ -35,19 +42,12 @@ public class PDFConversionService {
         }
 
         try (PDDocument document = loadDocument(inputFile)) {
-            int pageCount = document.getNumberOfPages();
-            List<BufferedImage> processedImages = new ArrayList<>();
-
-            for (int i = 0; i < pageCount; i++) {
-                BufferedImage bwImage = convertPageToBlackAndWhite(document, i, 300);
-                processedImages.add(bwImage);
+            for(PDPage page : document.getPages()) {
+                convertPageToGrayscale(document, page);
             }
-
-            PDDocument outputDocument = createDocumentFromImages(processedImages);
-            saveDocument(outputDocument, outputFile);
+            saveDocument(document, outputFile);
             return true;
         } catch (IOException e) {
-            e.printStackTrace();
             System.err.println("Error during conversion: " + e.getMessage());
             return false;
         }
@@ -63,23 +63,40 @@ public class PDFConversionService {
             throw e;
         }
     }
-    private BufferedImage convertPageToBlackAndWhite(PDDocument document, int pageIndex, float dpi) throws IOException {
-        PDFRenderer renderer = new PDFRenderer(document);
-        BufferedImage colorImage = renderer.renderImageWithDPI(pageIndex, dpi, ImageType.RGB);
-        return applyBlackAndWhiteConversion(colorImage);
-    }
+   private void convertPageToGrayscale(PDDocument document, PDPage page) throws IOException {
+        PDFStreamParser parser = new PDFStreamParser(page);
+        List<Object> tokens = parser.parse();
+        List<Object> newTokens = new ArrayList<>();
 
-    private BufferedImage applyBlackAndWhiteConversion(BufferedImage colorImage) {
-        BufferedImage grayImage = new BufferedImage(
-                colorImage.getWidth(),
-                colorImage.getHeight(),
-                BufferedImage.TYPE_BYTE_GRAY
-        );
-        ColorConvertOp op = new ColorConvertOp(ColorSpace.getInstance(ColorSpace.CS_GRAY), null);
-        op.filter(colorImage, grayImage);
+        for (Object token : tokens) {
+            if(token instanceof Operator operator) {
+                String name = operator.getName();
 
-        return grayImage;
-    }
+                if(name.equals("rg") || name.equals("RG")) {
+                    float r = ((COSNumber) newTokens.remove(newTokens.size() - 3)).floatValue();
+                    float g = ((COSNumber) newTokens.remove(newTokens.size() - 2)).floatValue();
+                    float b = ((COSNumber) newTokens.remove(newTokens.size() - 1)).floatValue();
+
+                    float gray = 0.299f * r + 0.587f * g + 0.114f * b;
+
+                    newTokens.add(COSFloat.get(String.valueOf(gray)));
+                    newTokens.add(Operator.getOperator(name.equals("rg") ? "g" : "G"));
+                } else {
+                    newTokens.add(token);
+                }
+            } else {
+                newTokens.add(token);
+            }
+        }
+       PDStream newStream = new PDStream(document);
+        try (OutputStream out = newStream.createOutputStream()) {
+            ContentStreamWriter writer = new ContentStreamWriter(out);
+            writer.writeTokens(newTokens);
+        }
+
+        page.setContents(newStream);
+
+   }
     private PDDocument createDocumentFromImages(List<BufferedImage> images) throws IOException {
         PDDocument document = new PDDocument();
         for(BufferedImage image : images) {
