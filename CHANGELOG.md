@@ -1,5 +1,6 @@
 # Changelog
 
+
 ### Unreleased
 - **Bug Fix**: Issue with fonts being replaced during pdf conversion
   - Fonts present in the pdf are replaced with approximations when the original font is not
@@ -9,6 +10,9 @@
     and converting their operands to grayscale
   - **Fix**: Stream-based parsing will solve grayscale conversion for vector elements but not embedded images.
   - **Add**: Embedded images will be converted to grayscale using PDImageXObject
+
+- **Added**: Utility class PDFInspector created to analyze properties of tester PDF files
+- 
 ## [1.0.1] - 2025-04-25
 ### Fixed
 - Corrected grayscale conversion for PDFs to handle color text correctly.
