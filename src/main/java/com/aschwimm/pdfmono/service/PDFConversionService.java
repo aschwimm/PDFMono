@@ -3,14 +3,18 @@ package com.aschwimm.pdfmono.service;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.contentstream.operator.Operator;
 import org.apache.pdfbox.cos.COSFloat;
+import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.cos.COSNumber;
 import org.apache.pdfbox.pdfparser.PDFStreamParser;
 import org.apache.pdfbox.pdfwriter.ContentStreamWriter;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.common.PDStream;
+import org.apache.pdfbox.pdmodel.graphics.PDXObject;
+import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
 import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.rendering.ImageType;
@@ -44,6 +48,7 @@ public class PDFConversionService {
         try (PDDocument document = loadDocument(inputFile)) {
             for(PDPage page : document.getPages()) {
                 convertPageToGrayscale(document, page);
+                convertEmbeddedImagesToGrayscale(document, page);
             }
             saveDocument(document, outputFile);
             return true;
@@ -97,19 +102,39 @@ public class PDFConversionService {
         page.setContents(newStream);
 
    }
-    private PDDocument createDocumentFromImages(List<BufferedImage> images) throws IOException {
-        PDDocument document = new PDDocument();
-        for(BufferedImage image : images) {
-            PDPage page = new PDPage(new PDRectangle(image.getWidth(), image.getHeight()));
-            document.addPage(page);
+    private void convertEmbeddedImagesToGrayscale(PDDocument document, PDPage page) throws IOException {
+        PDResources resources = page.getResources();
+        if(resources != null) {
+            processResourcesForImages(resources, document);
+        }
+    }
 
-            PDImageXObject pdImage = LosslessFactory.createFromImage(document, image);
+    private void processResourcesForImages(PDResources resources, PDDocument document) throws IOException {
+        for (COSName xObjectName : resources.getXObjectNames()) {
+            PDXObject xObject = resources.getXObject(xObjectName);
 
-            try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
-                contentStream.drawImage(pdImage, 0,0);
+            if(xObject instanceof PDImageXObject imageXObject) {
+                BufferedImage colorImage = imageXObject.getImage();
+                BufferedImage grayImage = new BufferedImage(
+                        colorImage.getWidth(),
+                        colorImage.getHeight(),
+                        BufferedImage.TYPE_BYTE_GRAY
+                );
+                Graphics2D graphics = grayImage.createGraphics();
+                graphics.drawImage(colorImage, 0, 0, null);
+                graphics.dispose();
+
+                PDImageXObject grayImageXObject = LosslessFactory.createFromImage(document,grayImage);
+                resources.put(xObjectName, grayImageXObject);
+            }
+            if(xObject instanceof PDFormXObject formXObject) {
+                PDResources nestedResources = formXObject.getResources();
+                if(nestedResources != null) {
+                    processResourcesForImages(nestedResources, document);
+                }
+
             }
         }
-        return document;
     }
     private void saveDocument(PDDocument document, String outputPath) throws IOException {
         try (document) {
