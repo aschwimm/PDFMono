@@ -1,6 +1,7 @@
 package com.aschwimm.pdfmono;
 
 import com.aschwimm.pdfmono.service.PDFConversionService;
+import com.aschwimm.pdfmono.util.PDFInspector;
 
 public class PDFMono {
     public static void main(String[] args) {
@@ -10,12 +11,14 @@ public class PDFMono {
         }
         String inputPath = args[0];
         String outputPath = args[1];
-        PDFConversionService conversionService = new PDFConversionService();
-        boolean success = conversionService.convertToBlackAndWhite(inputPath, outputPath);
-        if(success) {
-            System.out.println("PDF converted successfully");
-        } else {
-            System.out.println("PDF conversion failed");
-        }
+//        PDFConversionService conversionService = new PDFConversionService();
+//        boolean success = conversionService.convertToBlackAndWhite(inputPath, outputPath);
+//        if(success) {
+//            System.out.println("PDF converted successfully");
+//        } else {
+//            System.out.println("PDF conversion failed");
+//        }
+        PDFInspector inspector = new PDFInspector();
+        inspector.inspect(inputPath, outputPath);
     }
 }
