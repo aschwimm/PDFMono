@@ -8,11 +8,11 @@
   - **Fix**: This issue occurs because the PDFs are converted to images and rasterized
     I think this can be solved by parsing each page's content stream and, grabbing the appropriate operators(rg, RG, k, K)
     and converting their operands to grayscale
-  - **Fix**: Stream-based parsing will solve grayscale conversion for vector elements but not embedded images.
-  - **Add**: Embedded images will be converted to grayscale using PDImageXObject
+- **Bug Fix**: Vector elements like text are now properly converted to grayscale, but images are not
+  - **Fix**: Embedded images will are converted to grayscale using PDImageXObject, but some images still remain colored
+  this may be because of the image type or image color space, not sure.
 
-- **Added**: Utility class PDFInspector created to analyze properties of tester PDF files
-- 
+- **Add**: Utility class PDFInspector created to analyze properties of tester PDF files and make sure conversion is handled appropriately
 ## [1.0.1] - 2025-04-25
 ### Fixed
 - Corrected grayscale conversion for PDFs to handle color text correctly.
