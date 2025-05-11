@@ -5,6 +5,7 @@ import org.apache.pdfbox.contentstream.operator.Operator;
 import org.apache.pdfbox.cos.COSFloat;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.cos.COSNumber;
+import org.apache.pdfbox.io.RandomAccessReadBufferedFile;
 import org.apache.pdfbox.pdfparser.PDFStreamParser;
 import org.apache.pdfbox.pdfwriter.ContentStreamWriter;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -57,12 +58,12 @@ public class PDFConversionService {
             return false;
         }
     }
-    // PDDocument load() method is replaced with Loader class to separate concerns
+    // Update how PDF files are loaded in PDFBox 3.0.5
     private PDDocument loadDocument(String inputFile) throws IOException {
 
         try{
             File file = new File(inputFile);
-            return Loader.loadPDF(file);
+            return Loader.loadPDF(new RandomAccessReadBufferedFile(file));
         } catch(IOException e) {
             System.err.println("Error loading PDF: " + e.getMessage());
             throw e;

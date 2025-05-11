@@ -1,6 +1,7 @@
 package com.aschwimm.pdfmono.util;
 
 import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.io.RandomAccessReadBufferedFile;
 import org.apache.pdfbox.pdmodel.*;
 import org.apache.pdfbox.pdmodel.graphics.PDXObject;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
@@ -22,6 +23,7 @@ public class PDFInspector {
             for (int i = 0; i < pageCount; i++) {
                 PDPage page = document.getPage(i);
                 writer.write("## Page " + (i + 1) + "\n");
+
 
                 PDResources resources = page.getResources();
                 inspectResources(resources, writer, 1);
@@ -66,7 +68,7 @@ public class PDFInspector {
 
         try{
             File file = new File(inputFile);
-            return Loader.loadPDF(file);
+            return Loader.loadPDF(new RandomAccessReadBufferedFile(file));
         } catch(IOException e) {
             System.err.println("Error loading PDF: " + e.getMessage());
             throw e;
