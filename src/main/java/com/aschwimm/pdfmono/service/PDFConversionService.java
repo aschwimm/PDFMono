@@ -69,6 +69,7 @@ public class PDFConversionService {
             throw e;
         }
     }
+    // This will only convert vector-based content like text, not inline vector paths like vector images in the content stream
    private void convertPageToGrayscale(PDDocument document, PDPage page) throws IOException {
         PDFStreamParser parser = new PDFStreamParser(page);
         List<Object> tokens = parser.parse();
