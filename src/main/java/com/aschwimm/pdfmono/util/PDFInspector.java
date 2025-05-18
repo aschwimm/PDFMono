@@ -26,6 +26,7 @@ public class PDFInspector {
 
 
                 PDResources resources = page.getResources();
+                InputStream contents = page.getContents();
                 inspectResources(resources, writer, 1);
             }
 
@@ -51,6 +52,10 @@ public class PDFInspector {
         }
     }
 
+    private void inspectContents(InputStream contents, BufferedWriter writer, int indentLevel) throws IOException {
+        // This method will identify vector graphics in the PDF content stream
+    }
+
     private void logImageInfo(BufferedWriter writer, String name, PDImageXObject image, int indentLevel) throws IOException {
         writer.write(indent(indentLevel) + "- Image XObject: " + name + "\n");
         writer.write(indent(indentLevel + 1) + "* Width: " + image.getWidth() + "\n");
@@ -59,6 +64,10 @@ public class PDFInspector {
         writer.write(indent(indentLevel + 1) + "* BitsPerComponent: " + image.getBitsPerComponent() + "\n");
         writer.write(indent(indentLevel + 1) + "* IsStencil: " + image.isStencil() + "\n");
         writer.write(indent(indentLevel + 1) + "* Suffix: " + image.getSuffix() + "\n");
+    }
+
+    private void logVectorPathInfo(BufferedWriter writer, String name, int indentLevel) throws IOException {
+
     }
 
     private String indent(int level) {
