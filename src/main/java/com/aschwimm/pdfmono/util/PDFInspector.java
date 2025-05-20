@@ -12,10 +12,27 @@ import org.apache.pdfbox.pdmodel.common.PDStream;
 import org.apache.pdfbox.cos.*;
 
 import java.io.*;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class PDFInspector {
+
+    private static final Set<String> VECTOR_OPERATORS = Set.of(
+            "m", "l", "re", "c", "v", "y", "h",
+            "S", "s", "f", "F", "f*", "B", "B*", "b", "b*"
+    );
+    private static final Map<String, String> colorOperatorToColorSpace = Map.ofEntries(
+            Map.entry("rg", "DeviceRGB (nonstroking)"),
+            Map.entry("RG", "DeviceRGB (stroking)"),
+            Map.entry("g",  "DeviceGray (nonstroking)"),
+            Map.entry("G",  "DeviceGray (stroking)"),
+            Map.entry("k",  "DeviceCMYK (nonstroking)"),
+            Map.entry("K",  "DeviceCMYK (stroking)")
+    );
+
 
     public void inspect(String inputPath, String outputLogPath) {
         try (PDDocument document = loadDocument(inputPath);
@@ -30,7 +47,10 @@ public class PDFInspector {
 
                 PDResources resources = page.getResources();
 
+
+
                 inspectResources(resources, writer, 1);
+                inspectContents(page, writer, 1);
             }
 
             System.out.println("Inspection complete. Output written to: " + outputLogPath);
@@ -55,17 +75,39 @@ public class PDFInspector {
         }
     }
 
-    private void inspectContents(PDPage page) throws IOException {
+    private void inspectContents(PDPage page, BufferedWriter writer, int indentLevel) throws IOException {
         PDFStreamParser parser = new PDFStreamParser(page);
         List<Object> tokens = parser.parse();
-        for (Object token : tokens) {
-            if (token instanceof Operator operator) {
-                String name = operator.getName();
-                if(name.equals("q") || name.equals("Q")) {
-
-                }
+        Set<String> colorSpaces = new HashSet<>();
+        boolean insideFigure = false;
+        for(int i = 0; i < tokens.size(); i++) {
+            Object token = tokens.get(i);
+            if(!insideFigure && token instanceof COSName name && name.getName().equals("Figure")) {
+                insideFigure = true;
+                System.out.println("Figure found");
+                i++;
+                // Found the start of a Figure tag
             }
+            else if(insideFigure && token instanceof Operator operator && VECTOR_OPERATORS.contains(operator.getName())) {
+                //System.out.println("Vector graphic operator found");
+            }
+            else if(insideFigure && token instanceof Operator operator && colorOperatorToColorSpace.containsKey(operator.getName())) {
+                colorSpaces.add(colorOperatorToColorSpace.get(operator.getName()));
+            }
+            else if(insideFigure && token instanceof Operator operator && operator.getName().equals("EMC")) {
+                insideFigure = false;
+                // Found the end of a Figure tag
+                String colorSpaeeSummary = colorSpaces.stream().sorted().collect(Collectors.joining(" "));
+                logVectorPathInfo(writer, colorSpaeeSummary, indentLevel);
+                colorSpaces.clear();
+                System.out.println("EMC found");
+            }
+
         }
+//        for(Object token : tokens) {
+//
+//        }
+
 
 
     }
@@ -80,8 +122,9 @@ public class PDFInspector {
         writer.write(indent(indentLevel + 1) + "* Suffix: " + image.getSuffix() + "\n");
     }
 
-    private void logVectorPathInfo(BufferedWriter writer, String name, int indentLevel) throws IOException {
-
+    private void logVectorPathInfo(BufferedWriter writer, String summary, int indentLevel) throws IOException {
+        writer.write(indent(indentLevel) + "- Inline Vector Graphic\n");
+        writer.write(indent(indentLevel + 1) + "* ColorSpace: " + summary + "\n");
     }
 
     private String indent(int level) {
