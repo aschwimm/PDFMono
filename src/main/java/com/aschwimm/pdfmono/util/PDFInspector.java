@@ -1,7 +1,9 @@
 package com.aschwimm.pdfmono.util;
 
 import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.contentstream.operator.Operator;
 import org.apache.pdfbox.io.RandomAccessReadBufferedFile;
+import org.apache.pdfbox.pdfparser.PDFStreamParser;
 import org.apache.pdfbox.pdmodel.*;
 import org.apache.pdfbox.pdmodel.graphics.PDXObject;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
@@ -10,6 +12,7 @@ import org.apache.pdfbox.pdmodel.common.PDStream;
 import org.apache.pdfbox.cos.*;
 
 import java.io.*;
+import java.util.List;
 import java.util.Map;
 
 public class PDFInspector {
@@ -26,7 +29,7 @@ public class PDFInspector {
 
 
                 PDResources resources = page.getResources();
-                InputStream contents = page.getContents();
+
                 inspectResources(resources, writer, 1);
             }
 
@@ -52,8 +55,19 @@ public class PDFInspector {
         }
     }
 
-    private void inspectContents(InputStream contents, BufferedWriter writer, int indentLevel) throws IOException {
-        // This method will identify vector graphics in the PDF content stream
+    private void inspectContents(PDPage page) throws IOException {
+        PDFStreamParser parser = new PDFStreamParser(page);
+        List<Object> tokens = parser.parse();
+        for (Object token : tokens) {
+            if (token instanceof Operator operator) {
+                String name = operator.getName();
+                if(name.equals("q") || name.equals("Q")) {
+
+                }
+            }
+        }
+
+
     }
 
     private void logImageInfo(BufferedWriter writer, String name, PDImageXObject image, int indentLevel) throws IOException {
