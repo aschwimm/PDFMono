@@ -97,8 +97,8 @@ public class PDFInspector {
             else if(insideFigure && token instanceof Operator operator && operator.getName().equals("EMC")) {
                 insideFigure = false;
                 // Found the end of a Figure tag
-                String colorSpaeeSummary = colorSpaces.stream().sorted().collect(Collectors.joining(" "));
-                logVectorPathInfo(writer, colorSpaeeSummary, indentLevel);
+                String colorSpaceSummary = colorSpaces.stream().sorted().collect(Collectors.joining(" "));
+                logVectorPathInfo(writer, colorSpaceSummary, indentLevel);
                 colorSpaces.clear();
                 System.out.println("EMC found");
             }
