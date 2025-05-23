@@ -1,23 +1,23 @@
 # Changelog
 
-
 ### Unreleased
-- **Bug Fix**: Issue with fonts being replaced during pdf conversion
-  - Fonts present in the pdf are replaced with approximations when the original font is not
-    present
-  - **Fix**: This issue occurs because the PDFs are converted to images and rasterized
-    I think this can be solved by parsing each page's content stream and, grabbing the appropriate operators(rg, RG, k, K)
-    and converting their operands to grayscale
 - **Bug Fix**: Vector elements like text are now properly converted to grayscale, but images are not
-  - **Fix**: Embedded images will are converted to grayscale using PDImageXObject, but some images still remain colored
-  this may be because of the image type or image color space, not sure.
+  - **Fix**: Embedded images are converted to grayscale using PDImageXObject, but some images still remain colored.
+    This may be because of the image type or image color space—needs further investigation.
 
-- **Add**: Utility class PDFInspector created to analyze properties of tester PDF files and make sure conversion is handled appropriately
+- **Add**: Utility class `PDFInspector` created to analyze properties of tester PDF files and ensure conversion is handled appropriately.
+
+## [1.0.2] - 2025-05-08
+### Fixed
+- Fonts were being replaced with approximations during PDF conversion when the original font was not present.
+  - Cause: PDFs were being converted to images and rasterized, which ignored embedded font data.
+  - Fix: Replaced rasterization with direct content stream parsing, capturing `rg`, `RG`, `k`, `K` operators and converting operands to grayscale. This preserves original fonts.
+
 ## [1.0.1] - 2025-04-25
 ### Fixed
 - Corrected grayscale conversion for PDFs to handle color text correctly.
-    - Replaced Graphics2D.drawImage method with ColorConvertOp to achieve proper luminance-based conversion.
-    - Fixed color biases and removed unwanted color tints in the conversion process.
+  - Replaced `Graphics2D.drawImage` method with `ColorConvertOp` to achieve proper luminance-based conversion.
+  - Fixed color biases and removed unwanted color tints in the conversion process.
 
 ## [1.0.0] - 2025-04-15
 ### Added
