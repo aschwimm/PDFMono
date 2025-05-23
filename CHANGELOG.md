@@ -5,8 +5,11 @@
   - **Fix**: Embedded images are converted to grayscale using PDImageXObject, but some images still remain colored.
     This may be because of the image type or image color space—needs further investigation.
 
-- **Add**: Utility class `PDFInspector` created to analyze properties of tester PDF files and ensure conversion is handled appropriately.
-
+## [1.0.3] - 2025-05-21
+### Added
+- The utility class `PDFInspector` can now parse a PDF page's content stream and identify inline graphics as well as ImageXObjects and forms.
+  - `PDFInspector` writes a markdown log with each page's contents in a way that's easy to be read and understood.
+  - Inline vector-drawn graphics created in the page's content stream are able to be identified and their colorspace and paint operators logged.
 ## [1.0.2] - 2025-05-08
 ### Fixed
 - Fonts were being replaced with approximations during PDF conversion when the original font was not present.
