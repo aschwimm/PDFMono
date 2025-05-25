@@ -114,10 +114,27 @@ public class PDFInspector {
                 String name = operator.getName();
                 if(ALL_PAINT_OPERATORS.containsKey(name)) {
                     vectorGraphicObj.setPaintOperator(ALL_PAINT_OPERATORS.get(operator.getName()));
-                    System.out.println("Paint operator found: " + name);
                 }
                 else if(colorOperatorToColorSpace.containsKey(name)) {
                     vectorGraphicObj.setColorSpace(colorOperatorToColorSpace.get(name));
+                    if(name.equals("k") && tokens.get(i - 4) != null) {
+                        try {
+                            float c = ((COSNumber) tokens.get(i - 4)).floatValue();
+                            System.out.println("c: " + c);
+                            float m = ((COSNumber) tokens.get(i - 3)).floatValue();
+                            System.out.println("m: " + m);
+                            float y = ((COSNumber) tokens.get(i - 2)).floatValue();
+                            System.out.println("y: " + y);
+                            float kVal = ((COSNumber) tokens.get(i - 1)).floatValue();
+                            System.out.println("kVal: " + kVal);
+
+                            List<Float> CMYKValues = List.of(c, m, y, kVal);
+
+                            vectorGraphicObj.setCMYKValues(CMYKValues);
+                        } catch (ClassCastException e) {
+                            System.err.println("One of the CMYK tokens is not a COSNumber at index " + i + ": " + e.getMessage());
+                        }
+                    }
                     System.out.println("Color space found: " + name);
                 }
                 else if(name.equals("EMC")) {
@@ -144,6 +161,15 @@ public class PDFInspector {
     private void logVectorPathInfo(BufferedWriter writer, VectorGraphicInfo vectorGraphicInfo, int indentLevel) throws IOException {
         writer.write(indent(indentLevel) + "- Inline Vector Graphic\n");
         writer.write(indent(indentLevel + 1) + "* ColorSpace: " + vectorGraphicInfo.getColorSpace() + "\n");
+        Set<List<Float>> CMYKValues = vectorGraphicInfo.getCMYKValues();
+        writer.write(indent(indentLevel + 2) + "* Colors: \n");
+        for (List<Float> cmyk : CMYKValues) {
+            String joined = cmyk.stream()
+                    .map(v -> String.format("%.2f", v))
+                    .collect(Collectors.joining(", "));
+            writer.write(indent(indentLevel + 3) + "- (" + joined + ")\n");
+        }
+
         writer.write(indent(indentLevel + 1) + "* Paint Operator: " + vectorGraphicInfo.getPaintOperator() + "\n");
     }
 
@@ -163,10 +189,14 @@ public class PDFInspector {
 
     private static class VectorGraphicInfo {
         private String colorSpace, paintOperator;
+        private Set<List<Float>> CMYKValues;
+        ArrayList<Float> RGBValues;
+        ArrayList<Float> GrayValues;
 
         VectorGraphicInfo() {
             colorSpace = "Unknown";
             paintOperator = "Unknown";
+            CMYKValues = new HashSet<>();
         }
 
         VectorGraphicInfo(String colorSpace, String paintOperator) {
@@ -185,6 +215,20 @@ public class PDFInspector {
         }
         public void setPaintOperator(String paintOperator) {
             this.paintOperator = paintOperator;
+        }
+        public void setCMYKValues(List<Float> CMYKValues) {
+            this.CMYKValues.add(List.copyOf(CMYKValues));
+        }
+
+        public Set<List<Float>> getCMYKValues() {
+            return CMYKValues;
+        }
+
+        public void setRGBValues(ArrayList<Float> RGBValues) {
+            this.RGBValues = new ArrayList<>(RGBValues);
+        }
+        public void setGrayValues(ArrayList<Float> GrayValues) {
+            this.GrayValues = new ArrayList<>(GrayValues);
         }
     }
 }
