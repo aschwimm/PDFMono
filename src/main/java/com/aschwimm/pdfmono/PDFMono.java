@@ -11,14 +11,14 @@ public class PDFMono {
         }
         String inputPath = args[0];
         String outputPath = args[1];
-//        PDFConversionService conversionService = new PDFConversionService();
-//        boolean success = conversionService.convertToBlackAndWhite(inputPath, outputPath);
-//        if(success) {
-//            System.out.println("PDF converted successfully");
-//        } else {
-//            System.out.println("PDF conversion failed");
-//        }
-        PDFInspector inspector = new PDFInspector();
-        inspector.inspect(inputPath, outputPath);
+        PDFConversionService conversionService = new PDFConversionService();
+        boolean success = conversionService.convertToBlackAndWhite(inputPath, outputPath);
+        if(success) {
+            System.out.println("PDF converted successfully");
+        } else {
+            System.out.println("PDF conversion failed");
+        }
+//        PDFInspector inspector = new PDFInspector();
+//        inspector.inspect(inputPath, outputPath);
     }
 }
