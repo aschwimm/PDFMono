@@ -6,6 +6,7 @@ import org.apache.pdfbox.io.RandomAccessReadBufferedFile;
 import org.apache.pdfbox.pdfparser.PDFStreamParser;
 import org.apache.pdfbox.pdmodel.*;
 import org.apache.pdfbox.pdmodel.graphics.PDXObject;
+import org.apache.pdfbox.pdmodel.graphics.color.PDColorSpace;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
 import org.apache.pdfbox.pdmodel.common.PDStream;
@@ -106,7 +107,7 @@ public class PDFInspector {
             Object token = tokens.get(i);
             if(!insideFigure && token instanceof COSName name && name.getName().equals("Figure")) {
                 insideFigure = true;
-                System.out.println("Figure found");
+
                 i++;
                 // Found the start of a Figure tag
             }
@@ -120,13 +121,13 @@ public class PDFInspector {
                     if(name.equals("k") && tokens.get(i - 4) != null) {
                         try {
                             float c = ((COSNumber) tokens.get(i - 4)).floatValue();
-                            System.out.println("c: " + c);
+
                             float m = ((COSNumber) tokens.get(i - 3)).floatValue();
-                            System.out.println("m: " + m);
+
                             float y = ((COSNumber) tokens.get(i - 2)).floatValue();
-                            System.out.println("y: " + y);
+
                             float kVal = ((COSNumber) tokens.get(i - 1)).floatValue();
-                            System.out.println("kVal: " + kVal);
+
 
                             List<Float> CMYKValues = List.of(c, m, y, kVal);
 
@@ -135,13 +136,11 @@ public class PDFInspector {
                             System.err.println("One of the CMYK tokens is not a COSNumber at index " + i + ": " + e.getMessage());
                         }
                     }
-                    System.out.println("Color space found: " + name);
                 }
                 else if(name.equals("EMC")) {
                     insideFigure = false;
                     // Found the end of a Figure tag
                     logVectorPathInfo(writer, vectorGraphicObj, indentLevel);
-                    System.out.println("EMC found");
                 }
 
             }
