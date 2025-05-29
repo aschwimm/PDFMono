@@ -164,10 +164,12 @@ public class PDFInspector {
         Set<List<Float>> CMYKValues = vectorGraphicInfo.getCMYKValues();
         writer.write(indent(indentLevel + 2) + "* Colors: \n");
         for (List<Float> cmyk : CMYKValues) {
+            String closestColor = ColorMapper.getClosestColorName(cmyk);
             String joined = cmyk.stream()
                     .map(v -> String.format("%.2f", v))
                     .collect(Collectors.joining(", "));
             writer.write(indent(indentLevel + 3) + "- (" + joined + ")\n");
+            writer.write(indent(indentLevel + 4) + "- Approximate Color: " + closestColor + "\n");
         }
 
         writer.write(indent(indentLevel + 1) + "* Paint Operator: " + vectorGraphicInfo.getPaintOperator() + "\n");
@@ -231,4 +233,54 @@ public class PDFInspector {
             this.GrayValues = new ArrayList<>(GrayValues);
         }
     }
+
+    private static class ColorMapper {
+
+        private static final Map<String, int[]> NAMED_COLORS = Map.ofEntries(
+                Map.entry("Black", new int[]{0, 0, 0}),
+                Map.entry("White", new int[]{255, 255, 255}),
+                Map.entry("Red", new int[]{255, 0, 0}),
+                Map.entry("Green", new int[]{0, 255, 0}),
+                Map.entry("Blue", new int[]{0, 0, 255}),
+                Map.entry("Cyan", new int[]{0, 255, 255}),
+                Map.entry("Magenta", new int[]{255, 0, 255}),
+                Map.entry("Yellow", new int[]{255, 255, 0}),
+                Map.entry("Gray", new int[]{128, 128, 128}),
+                Map.entry("Orange", new int[]{255, 165, 0})
+                // Temporarily disabled to prevent false "brown" positives
+//                Map.entry("Dark Brown", new int[]{101, 67, 33})
+
+
+        );
+
+        public static String getClosestColorName(List<Float> cmyk) {
+            float c = cmyk.get(0);
+            float m = cmyk.get(1);
+            float y = cmyk.get(2);
+            float k = cmyk.get(3);
+            int r = (int)(255 * (1 - c) * (1 - k));
+            int g = (int)(255 * (1 - m) * (1 - k));
+            int b = (int)(255 * (1 - y) * (1 - k));
+
+            String closestColor = null;
+            double minDistance = Double.MAX_VALUE;
+
+            for (Map.Entry<String, int[]> entry : NAMED_COLORS.entrySet()) {
+                int[] rgb = entry.getValue();
+                double distance = Math.sqrt(
+                        Math.pow(rgb[0] - r, 2) +
+                                Math.pow(rgb[1] - g, 2) +
+                                Math.pow(rgb[2] - b, 2)
+                );
+
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestColor = entry.getKey();
+                }
+            }
+
+            return closestColor + String.format(" (RGB: %d, %d, %d)", r, g, b);
+        }
+    }
+
 }
