@@ -105,8 +105,6 @@ public class PDFConversionService {
                         float yVal = y.floatValue();
                         float kVal = k.floatValue();
 
-                        Float[] cmyk = new Float[] { cVal, mVal, yVal, kVal };
-
                         boolean isWhite = cVal <= 0.001f && mVal <= 0.001f && yVal <= 0.001f && kVal <= 0.001f;
 
                         if (isWhite) {
