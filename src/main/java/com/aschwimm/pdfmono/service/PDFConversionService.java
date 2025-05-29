@@ -15,6 +15,7 @@ import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.common.PDStream;
 import org.apache.pdfbox.pdmodel.graphics.PDXObject;
+import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceCMYK;
 import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
 import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
@@ -25,11 +26,13 @@ import java.awt.color.ColorSpace;
 import java.awt.image.ColorConvertOp;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.stream.IntStream;
 
 public class PDFConversionService {
     public boolean convertToBlackAndWhite(String inputFile, String outputFile) {
@@ -75,7 +78,8 @@ public class PDFConversionService {
         List<Object> tokens = parser.parse();
         List<Object> newTokens = new ArrayList<>();
 
-        for (Object token : tokens) {
+        for (int i = 0; i < tokens.size(); i++) {
+            Object token = tokens.get(i);
             if(token instanceof Operator operator) {
                 String name = operator.getName();
 
@@ -88,7 +92,37 @@ public class PDFConversionService {
 
                     newTokens.add(COSFloat.get(String.valueOf(gray)));
                     newTokens.add(Operator.getOperator(name.equals("rg") ? "g" : "G"));
-                } else {
+                }
+                else if (name.equals("k") || name.equals("K")) {
+                    if (i >= 4 &&
+                            tokens.get(i - 4) instanceof COSNumber c &&
+                            tokens.get(i - 3) instanceof COSNumber m &&
+                            tokens.get(i - 2) instanceof COSNumber y &&
+                            tokens.get(i - 1) instanceof COSNumber k) {
+
+                        float cVal = c.floatValue();
+                        float mVal = m.floatValue();
+                        float yVal = y.floatValue();
+                        float kVal = k.floatValue();
+
+                        Float[] cmyk = new Float[] { cVal, mVal, yVal, kVal };
+
+                        boolean isWhite = cVal <= 0.001f && mVal <= 0.001f && yVal <= 0.001f && kVal <= 0.001f;
+
+                        if (isWhite) {
+                            newTokens.addAll(List.of(c, m, y, k));
+                            newTokens.add(operator);
+                            continue;
+                        }
+
+                        float[] rgb = PDDeviceCMYK.INSTANCE.toRGB(new float[] { cVal, mVal, yVal, kVal });
+                        float gray = 0.3f * rgb[0] + 0.59f * rgb[1] + 0.11f * rgb[2];
+
+                        newTokens.add(COSFloat.get(String.valueOf(gray)));
+                        newTokens.add(Operator.getOperator(name.equals("k") ? "g" : "G"));
+                    }
+                }
+                else {
                     newTokens.add(token);
                 }
             } else {
