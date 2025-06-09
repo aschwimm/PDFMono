@@ -2,9 +2,7 @@ package com.aschwimm.pdfmono.service;
 
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.contentstream.operator.Operator;
-import org.apache.pdfbox.cos.COSFloat;
-import org.apache.pdfbox.cos.COSName;
-import org.apache.pdfbox.cos.COSNumber;
+import org.apache.pdfbox.cos.*;
 import org.apache.pdfbox.io.RandomAccessReadBufferedFile;
 import org.apache.pdfbox.pdfparser.PDFStreamParser;
 import org.apache.pdfbox.pdfwriter.ContentStreamWriter;
@@ -15,6 +13,7 @@ import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.common.PDStream;
 import org.apache.pdfbox.pdmodel.graphics.PDXObject;
+import org.apache.pdfbox.pdmodel.graphics.color.PDColorSpace;
 import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceCMYK;
 import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
 import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
@@ -77,8 +76,30 @@ public class PDFConversionService {
         PDFStreamParser parser = new PDFStreamParser(page);
         List<Object> tokens = parser.parse();
         List<Object> newTokens = new ArrayList<>();
+        PDResources resources = page.getResources();
+        COSDictionary colorSpace = resources.getCOSObject().getCOSDictionary(COSName.COLORSPACE);
+        for (COSName colorName : colorSpace.keySet()) {
+           COSBase value = colorSpace.getItem(colorName);
+           if (value instanceof COSObject) {
+               value = ((COSObject) value).getObject();
+           }
 
-        for (int i = 0; i < tokens.size(); i++) {
+           if (value instanceof COSArray array) {
+               System.out.println("Color space name: " + colorName);
+               for (int i = 0; i < array.size(); i++) {
+                   COSBase element = array.get(i);
+                   if (element instanceof COSObject obj) {
+                       element = obj.getObject();
+                   }
+
+                   System.out.println("  Index " + i + ": " + element.getClass().getSimpleName() + " -> " + element);
+               }
+           }
+       }
+
+
+
+       for (int i = 0; i < tokens.size(); i++) {
             Object token = tokens.get(i);
             if(token instanceof Operator operator) {
                 String name = operator.getName();
