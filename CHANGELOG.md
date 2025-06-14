@@ -1,9 +1,14 @@
 # Changelog
 
-### Unreleased
-- **Bug Fix**: Vector elements like text are now properly converted to grayscale, but images are not
-  - **Fix**: Embedded images are converted to grayscale using PDImageXObject, but some images still remain colored.
-    This may be because of the image type or image color space—needs further investigation.
+## Unreleased
+**ICCBased Profiles**: Need to replace existing ICCBased Profiles with grayscale profile to ensure grayscale conversion of instances where color is set by an indirect reference to an object
+
+## [1.0.4] - 2025-06-09
+### Fixed
+- Graphics created with draw operators in the content stream with the `CMYK colorspace` were not being properly handled. Added logic to identify these graphics
+  and apply grayscale transformation.
+  - `CMYK colorspace` paint operators had to be converted to `RGB colorspace`, transformation applied while checking for colors very close to white
+    to avoid accidentally inverting colors below as certain threshold for whites
 
 ## [1.0.3] - 2025-05-21
 ### Added
