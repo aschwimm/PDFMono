@@ -79,59 +79,10 @@ public class PDFConversionService {
    private void convertPageToGrayscale(PDDocument document, PDPage page) throws IOException {
         PDFStreamParser parser = new PDFStreamParser(page);
         List<Object> tokens = parser.parse();
-        List<Object> newTokens = new ArrayList<>();
         PDResources resources = page.getResources();
+        List<Object> newTokens = convertInlineColorsToGray(tokens);
         COSDictionary csDict = resources.getCOSObject().getCOSDictionary(COSName.COLORSPACE);
 
-       for (int i = 0; i < tokens.size(); i++) {
-            Object token = tokens.get(i);
-            if(token instanceof Operator operator) {
-                String name = operator.getName();
-
-                if(name.equals("rg") || name.equals("RG")) {
-                    float r = ((COSNumber) newTokens.remove(newTokens.size() - 3)).floatValue();
-                    float g = ((COSNumber) newTokens.remove(newTokens.size() - 2)).floatValue();
-                    float b = ((COSNumber) newTokens.remove(newTokens.size() - 1)).floatValue();
-
-                    float gray = rgbToGray(r,g,b);
-
-                    newTokens.add(COSFloat.get(String.valueOf(gray)));
-                    newTokens.add(Operator.getOperator(name.equals("rg") ? "g" : "G"));
-                }
-                else if (name.equals("k") || name.equals("K")) {
-                    if (i >= 4 &&
-                            tokens.get(i - 4) instanceof COSNumber c &&
-                            tokens.get(i - 3) instanceof COSNumber m &&
-                            tokens.get(i - 2) instanceof COSNumber y &&
-                            tokens.get(i - 1) instanceof COSNumber k) {
-
-                        float cVal = c.floatValue();
-                        float mVal = m.floatValue();
-                        float yVal = y.floatValue();
-                        float kVal = k.floatValue();
-
-                        boolean isWhite = cVal <= 0.001f && mVal <= 0.001f && yVal <= 0.001f && kVal <= 0.001f;
-
-                        if (isWhite) {
-                            newTokens.addAll(List.of(c, m, y, k));
-                            newTokens.add(operator);
-                            continue;
-                        }
-
-                        float[] rgb = PDDeviceCMYK.INSTANCE.toRGB(new float[] { cVal, mVal, yVal, kVal });
-                        float gray = rgbToGray(rgb[0], rgb[1], rgb[2]);
-
-                        newTokens.add(COSFloat.get(String.valueOf(gray)));
-                        newTokens.add(Operator.getOperator(name.equals("k") ? "g" : "G"));
-                    }
-                }
-                else {
-                    newTokens.add(token);
-                }
-            } else {
-                newTokens.add(token);
-            }
-        }
        PDStream newStream = new PDStream(document);
         try (OutputStream out = newStream.createOutputStream()) {
             ContentStreamWriter writer = new ContentStreamWriter(out);
@@ -185,5 +136,58 @@ public class PDFConversionService {
     // This method converts an RGB color while preserving luminance
     private float rgbToGray(float R, float G, float B) {
         return 0.299f * R + 0.587f * G + 0.114f * B;
+    }
+    private List<Object> convertInlineColorsToGray(List<Object> tokens) throws IOException {
+        List<Object> newTokens = new ArrayList<>();
+        for (int i = 0; i < tokens.size(); i++) {
+            Object token = tokens.get(i);
+            if(token instanceof Operator operator) {
+                String name = operator.getName();
+
+                if(name.equals("rg") || name.equals("RG")) {
+                    float r = ((COSNumber) newTokens.remove(newTokens.size() - 3)).floatValue();
+                    float g = ((COSNumber) newTokens.remove(newTokens.size() - 2)).floatValue();
+                    float b = ((COSNumber) newTokens.remove(newTokens.size() - 1)).floatValue();
+
+                    float gray = rgbToGray(r,g,b);
+
+                    newTokens.add(COSFloat.get(String.valueOf(gray)));
+                    newTokens.add(Operator.getOperator(name.equals("rg") ? "g" : "G"));
+                }
+                else if (name.equals("k") || name.equals("K")) {
+                    if (i >= 4 &&
+                            tokens.get(i - 4) instanceof COSNumber c &&
+                            tokens.get(i - 3) instanceof COSNumber m &&
+                            tokens.get(i - 2) instanceof COSNumber y &&
+                            tokens.get(i - 1) instanceof COSNumber k) {
+
+                        float cVal = c.floatValue();
+                        float mVal = m.floatValue();
+                        float yVal = y.floatValue();
+                        float kVal = k.floatValue();
+
+                        boolean isWhite = cVal <= 0.001f && mVal <= 0.001f && yVal <= 0.001f && kVal <= 0.001f;
+
+                        if (isWhite) {
+                            newTokens.addAll(List.of(c, m, y, k));
+                            newTokens.add(operator);
+                            continue;
+                        }
+
+                        float[] rgb = PDDeviceCMYK.INSTANCE.toRGB(new float[] { cVal, mVal, yVal, kVal });
+                        float gray = rgbToGray(rgb[0], rgb[1], rgb[2]);
+
+                        newTokens.add(COSFloat.get(String.valueOf(gray)));
+                        newTokens.add(Operator.getOperator(name.equals("k") ? "g" : "G"));
+                    }
+                }
+                else {
+                    newTokens.add(token);
+                }
+            } else {
+                newTokens.add(token);
+            }
+        }
+        return newTokens;
     }
 }
