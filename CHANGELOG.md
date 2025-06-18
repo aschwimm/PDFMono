@@ -2,7 +2,7 @@
 
 ## Unreleased
 **ICCBased Profiles**: Need to replace existing ICCBased Profiles with grayscale profile to ensure grayscale conversion of instances where color is set by an indirect reference to an object
-
+- Bug with colorspace conversion may be occurring because fill color operator k is being overwritten with 8 operands in the content stream instead of the expected 8, potentially causing unexpected behavior in other parts of the program. Explore further.
 ## [1.0.4] - 2025-06-09
 ### Fixed
 - Graphics created with draw operators in the content stream with the `CMYK colorspace` were not being properly handled. Added logic to identify these graphics
