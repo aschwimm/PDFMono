@@ -20,28 +20,31 @@ import java.util.stream.IntStream;
 
 public class PDFPageToImageToGrayscale {
 
-    public static boolean convertToGrayscalePDF(String inputPdfPath, String outputPdfPath, float dpi) {
+    private final PDFDocumentIO pdfDocumentIO;
+
+    public PDFPageToImageToGrayscale(PDFDocumentIO pdfDocumentIO) {
+        this.pdfDocumentIO = pdfDocumentIO;
+    }
+
+    public void convertToGrayscalePDF(String inputPdfPath, String outputPdfPath, float dpi) throws Exception {
         File input = new File(inputPdfPath);
         File output = new File(outputPdfPath);
         if (!input.exists() || !input.isFile()) {
-            System.err.println("Input file does not exist or is not a valid file.");
-            return false;
+            throw new IllegalArgumentException("Input file does not exist or is not a valid file: " + inputPdfPath);
         }
 
-        if (!output.getParentFile().exists()) {
-            System.err.println("Output directory does not exist.");
-            return false;
+        if (!output.getParentFile().exists() && !output.getParentFile().mkdirs()) {
+            throw new IOException("Output directory does not exist and could not be created: " + output.getParentFile().getAbsolutePath());
         }
 
-        try (PDDocument document = PDFDocumentIO.loadDocument(inputPdfPath); PDDocument outputDocument = new PDDocument()) {
+        try (PDDocument document = pdfDocumentIO.loadDocument(inputPdfPath); PDDocument outputDocument = new PDDocument()) {
             PDFRenderer renderer = new PDFRenderer(document);
             int pageCount = document.getNumberOfPages();
-
-            System.out.println("Converting " + pageCount + " pages to grayscale at " + dpi + " DPI...");
-
             for (int i = 0; i < pageCount; i++) {
-                try {
-                    // FIXED: Use renderImageWithDPI instead of renderImage
+
+                System.out.printf("\rProcessing page %d of %d...          ", (i + 1), pageCount);
+                System.out.flush();
+                // FIXED: Use renderImageWithDPI instead of renderImage
                     BufferedImage image = renderer.renderImageWithDPI(i, dpi, ImageType.RGB);
                     BufferedImage grayScaleImage = convertToGrayscaleWithGamma(image);
 
@@ -68,21 +71,15 @@ public class PDFPageToImageToGrayscale {
                     // Clean up memory
                     image.flush();
                     grayScaleImage.flush();
-
-                    System.out.println("Processed page " + (i + 1) + " of " + pageCount);
-
-                } catch (Exception e) {
-                    System.err.println("Error processing page " + (i + 1) + ": " + e.getMessage());
-                }
             }
-
+            System.out.println();
             // FIXED: Save outputDocument instead of input document
             outputDocument.save(outputPdfPath);
-            return true;
-
+            System.out.println("All pages processed. Output document saved.");
         } catch (IOException e) {
-            System.err.println("Error during conversion: " + e.getMessage());
-            return false;
+            throw new IOException("Failed to convert PDF due to I/O error: " + e.getMessage(), e);
+        } catch (Exception e) {
+            throw new Exception("An error occurred during page rendering or image processing: " + e.getMessage(), e);
         }
     }
 
