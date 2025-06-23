@@ -1,7 +1,7 @@
 # Changelog
 
 ## Unreleased
-**ICCBased Profiles**: Need to replace existing ICCBased Profiles with grayscale profile to ensure grayscale conversion of instances where color is set by an indirect reference to an object
+**Replace alternate colorspaces with DeviceGray**: Replacing alternate colorspace for `/Separation` type colorspaces has shown limited success but needs to handle edge cases before it can be reiably implemented 
 
 ## [1.0.5] - 2025-06-21
 ### Fixed
