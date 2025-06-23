@@ -13,7 +13,7 @@ This class handles PDF file I/O
 public class PDFDocumentIO {
 
     // Update how PDF files are loaded for PDFBox 3.0.5
-    public static PDDocument loadDocument(String inputFile) throws IOException {
+    public  PDDocument loadDocument(String inputFile) throws IOException {
 
         try{
             File file = new File(inputFile);
