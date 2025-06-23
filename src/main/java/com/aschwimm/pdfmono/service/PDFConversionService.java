@@ -1,6 +1,7 @@
 package com.aschwimm.pdfmono.service;
 
 import com.aschwimm.pdfmono.util.ColorConverter;
+import com.aschwimm.pdfmono.util.PDFDocumentIO;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.contentstream.operator.Operator;
 import org.apache.pdfbox.cos.*;
@@ -54,7 +55,7 @@ public class PDFConversionService {
             return false;
         }
 
-        try (PDDocument document = loadDocument(inputFile)) {
+        try (PDDocument document = PDFDocumentIO.loadDocument(inputFile)) {
             for(PDPage page : document.getPages()) {
                 convertPageToGrayscale(document, page);
                 convertEmbeddedImagesToGrayscale(document, page);

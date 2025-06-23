@@ -1,7 +1,7 @@
 package com.aschwimm.pdfmono.service;
 
-import org.apache.pdfbox.Loader;
-import org.apache.pdfbox.io.RandomAccessReadBufferedFile;
+import com.aschwimm.pdfmono.util.ColorConverter;
+import com.aschwimm.pdfmono.util.PDFDocumentIO;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -9,18 +9,13 @@ import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
-
-import javax.imageio.ImageIO;
-import java.awt.*;
-import java.awt.color.ColorSpace;
 import java.awt.image.BufferedImage;
-import java.awt.image.ColorConvertOp;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.util.stream.IntStream;
 
-import static com.aschwimm.pdfmono.service.PDFConversionService.loadDocument;
-import static com.aschwimm.pdfmono.service.PDFConversionService.saveDocument;
+
+
 
 
 public class PDFPageToImageToGrayscale {
@@ -38,9 +33,7 @@ public class PDFPageToImageToGrayscale {
             return false;
         }
 
-        PDDocument outputDocument = null;
-        try (PDDocument document = loadDocument(inputPdfPath)) {
-            outputDocument = new PDDocument();
+        try (PDDocument document = PDFDocumentIO.loadDocument(inputPdfPath); PDDocument outputDocument = new PDDocument()) {
             PDFRenderer renderer = new PDFRenderer(document);
             int pageCount = document.getNumberOfPages();
 
@@ -60,7 +53,7 @@ public class PDFPageToImageToGrayscale {
 
                     PDImageXObject pdImage = PDImageXObject.createFromByteArray(
                             outputDocument,
-                            bufferedImageToByteArray(grayScaleImage, "PNG"),
+                            bufferedImageToByteArray(grayScaleImage, "JPEG"),
                             "grayscale_page_" + (i + 1)
                     );
 
@@ -84,21 +77,12 @@ public class PDFPageToImageToGrayscale {
             }
 
             // FIXED: Save outputDocument instead of input document
-            saveDocument(outputDocument, outputPdfPath);
+            outputDocument.save(outputPdfPath);
             return true;
 
-        } catch(IOException e) {
+        } catch (IOException e) {
             System.err.println("Error during conversion: " + e.getMessage());
             return false;
-        } finally {
-            // Clean up output document
-            if (outputDocument != null) {
-                try {
-                    outputDocument.close();
-                } catch (IOException e) {
-                    System.err.println("Error closing output document: " + e.getMessage());
-                }
-            }
         }
     }
 
@@ -148,43 +132,7 @@ public class PDFPageToImageToGrayscale {
     }
 
     // Alternative grayscale conversion methods with brightness adjustments
-    private static BufferedImage convertToGrayscaleWithGamma(BufferedImage originalImage) {
-        BufferedImage grayscaleImage = new BufferedImage(
-                originalImage.getWidth(),
-                originalImage.getHeight(),
-                BufferedImage.TYPE_BYTE_GRAY
-        );
 
-        // Gamma value increases brightness > 1, decreases brightness < 1
-        double gamma = 1.0;
-        double invGamma = 1.0 / gamma;
-
-        for (int y = 0; y < originalImage.getHeight(); y++) {
-            for (int x = 0; x < originalImage.getWidth(); x++) {
-                int rgb = originalImage.getRGB(x, y);
-
-                // Extract RGB components
-                int red = (rgb >> 16) & 0xFF;
-                int green = (rgb >> 8) & 0xFF;
-                int blue = rgb & 0xFF;
-
-                // Calculate luminance
-                double gray = (0.299 * red + 0.587 * green + 0.114 * blue) / 255.0;
-
-                // Apply gamma correction
-                gray = Math.pow(gray, invGamma);
-
-                // Convert back to 0-255 range
-                int grayValue = (int) Math.min(255, Math.max(0, gray * 255));
-
-                // Create grayscale RGB value
-                int grayRGB = (grayValue << 16) | (grayValue << 8) | grayValue;
-                grayscaleImage.setRGB(x, y, grayRGB);
-            }
-        }
-
-        return grayscaleImage;
-    }
 
     // Method 2: Contrast and brightness adjustment
     private static BufferedImage convertToGrayscaleWithContrast(BufferedImage originalImage) {
@@ -311,6 +259,47 @@ public class PDFPageToImageToGrayscale {
                 grayscaleImage.setRGB(x, y, grayRGB);
             }
         }
+
+        return grayscaleImage;
+    }
+
+    private static BufferedImage convertToGrayscaleWithGamma(BufferedImage originalImage) {
+        BufferedImage grayscaleImage = new BufferedImage(
+                originalImage.getWidth(),
+                originalImage.getHeight(),
+                BufferedImage.TYPE_BYTE_GRAY
+        );
+
+        double gamma = 2.2;
+        double invGamma = 1.0 / gamma;
+
+        int width = originalImage.getWidth();
+        int height = originalImage.getHeight();
+
+        // Process rows in parallel for better performance on large images
+        IntStream.range(0, height).parallel().forEach(y -> {
+            for (int x = 0; x < width; x++) {
+                int rgb = originalImage.getRGB(x, y);
+
+                // Extract RGB components
+                int red = (rgb >> 16) & 0xFF;
+                int green = (rgb >> 8) & 0xFF;
+                int blue = rgb & 0xFF;
+
+                // Calculate luminance
+                double gray = (ColorConverter.rgbToGray(red,green,blue)) / 255.0;
+
+                // Apply gamma correction
+                gray = Math.pow(gray, invGamma);
+
+                // Convert back to 0-255 range
+                int grayValue = (int) Math.min(255, Math.max(0, gray * 255));
+
+                // Create grayscale RGB value
+                int grayRGB = (grayValue << 16) | (grayValue << 8) | grayValue;
+                grayscaleImage.setRGB(x, y, grayRGB);
+            }
+        });
 
         return grayscaleImage;
     }
