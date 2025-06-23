@@ -40,7 +40,11 @@ public class PDFConversionService {
     private Stack<PDColorSpace> nonStrokingColorSpaceStack;
     private Stack<PDColorSpace> strokingColorSpaceStack;
     int csCount = 0;
+    private final PDFDocumentIO pdfDocumentIO;
 
+    public PDFConversionService(PDFDocumentIO pdfDocumentIO) {
+        this.pdfDocumentIO = pdfDocumentIO;
+    }
     public boolean convertToBlackAndWhite(String inputFile, String outputFile) {
         File input = new File(inputFile);
         File output = new File(outputFile);
@@ -55,7 +59,7 @@ public class PDFConversionService {
             return false;
         }
 
-        try (PDDocument document = PDFDocumentIO.loadDocument(inputFile)) {
+        try (PDDocument document = pdfDocumentIO.loadDocument(inputFile)) {
             for(PDPage page : document.getPages()) {
                 convertPageToGrayscale(document, page);
                 convertEmbeddedImagesToGrayscale(document, page);
