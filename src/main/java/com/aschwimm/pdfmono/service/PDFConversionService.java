@@ -10,9 +10,11 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.PDResources;
+import org.apache.pdfbox.pdmodel.common.COSDictionaryMap;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.common.PDStream;
 import org.apache.pdfbox.pdmodel.common.function.PDFunction;
+import org.apache.pdfbox.pdmodel.common.function.PDFunctionType4;
 import org.apache.pdfbox.pdmodel.graphics.PDXObject;
 import org.apache.pdfbox.pdmodel.graphics.color.*;
 import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
@@ -25,17 +27,17 @@ import java.awt.color.ColorSpace;
 import java.awt.color.ICC_Profile;
 import java.awt.image.ColorConvertOp;
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.util.Stack;
+import java.util.List;
 import java.util.stream.IntStream;
 
 public class PDFConversionService {
     private Stack<PDColorSpace> nonStrokingColorSpaceStack;
     private Stack<PDColorSpace> strokingColorSpaceStack;
+    int csCount = 0;
 
     public boolean convertToBlackAndWhite(String inputFile, String outputFile) {
         File input = new File(inputFile);
@@ -55,6 +57,7 @@ public class PDFConversionService {
             for(PDPage page : document.getPages()) {
                 convertPageToGrayscale(document, page);
                 convertEmbeddedImagesToGrayscale(document, page);
+                convertSeparationColorSpaceToGray(document, page);
             }
 
             saveDocument(document, outputFile);
@@ -63,6 +66,7 @@ public class PDFConversionService {
             System.err.println("Error during conversion: " + e.getMessage());
             return false;
         }
+
     }
     // Update how PDF files are loaded in PDFBox 3.0.5
     private PDDocument loadDocument(String inputFile) throws IOException {
@@ -79,19 +83,73 @@ public class PDFConversionService {
    private void convertPageToGrayscale(PDDocument document, PDPage page) throws IOException {
         PDFStreamParser parser = new PDFStreamParser(page);
         List<Object> tokens = parser.parse();
-        PDResources resources = page.getResources();
-        List<Object> newTokens = convertInlineColorsToGray(tokens);
-        COSDictionary csDict = resources.getCOSObject().getCOSDictionary(COSName.COLORSPACE);
-
-       PDStream newStream = new PDStream(document);
+        List<Object> newTokens = convertInlineColorsToGray(tokens, page);
+        PDStream newStream = new PDStream(document);
         try (OutputStream out = newStream.createOutputStream()) {
             ContentStreamWriter writer = new ContentStreamWriter(out);
             writer.writeTokens(newTokens);
         }
-
         page.setContents(newStream);
 
+   }
+   /*
+   Work in progress. The method works by converting alternate colorspaces for /Separation type colorspace objects
+   into DeviceGray
+    */
+   private void convertSeparationColorSpaceToGray(PDDocument document, PDPage page) throws IOException {
+        PDResources resources = page.getResources();
+        Iterable<COSName> csNames = resources.getColorSpaceNames();
+        List<COSName> toDelete = new ArrayList<>();
+        Map<COSName, PDColorSpace> colorSpaceMap = new HashMap<>();
+        for (COSName csName : csNames) {
+            PDColorSpace colorSpace = resources.getColorSpace(csName);
+            colorSpaceMap.put(csName, colorSpace);
+            toDelete.add(csName);
+        }
 
+       for (Map.Entry<COSName, PDColorSpace> entry : colorSpaceMap.entrySet()) {
+           COSName name = entry.getKey();
+           String strName = name.getName();
+           System.out.println(strName);
+           PDColorSpace cs = entry.getValue();
+
+
+           if (cs instanceof PDSeparation) {
+               PDSeparation sep = (PDSeparation) cs;
+
+
+               sep.setAlternateColorSpace(PDDeviceGray.INSTANCE);
+
+
+               COSDictionary functionDict = new COSDictionary();
+               functionDict.setInt(COSName.FUNCTION_TYPE, 4);
+
+               COSArray domain = new COSArray();
+               domain.add(COSInteger.ZERO);
+               domain.add(COSInteger.ONE);
+               functionDict.setItem(COSName.DOMAIN, domain);
+
+               COSArray range = new COSArray();
+               range.add(COSInteger.ZERO);
+               range.add(COSInteger.ONE);
+               functionDict.setItem(COSName.RANGE, range);
+
+
+               String psCode = "{ 0.755 mul 1 exch sub }";
+               byte[] psBytes = psCode.getBytes(StandardCharsets.US_ASCII);
+               functionDict.setItem(COSName.LENGTH, COSInteger.get(psBytes.length));
+
+               COSStream stream = document.getDocument().createCOSStream();
+               stream.addAll(functionDict);
+               try (OutputStream os = stream.createOutputStream(COSName.FLATE_DECODE)) {
+                   os.write(psBytes);
+               }
+
+               PDFunctionType4 tintTransform = new PDFunctionType4(stream);
+               sep.setTintTransform(tintTransform);
+           }
+
+       }
    }
     private void convertEmbeddedImagesToGrayscale(PDDocument document, PDPage page) throws IOException {
         PDResources resources = page.getResources();
@@ -137,7 +195,7 @@ public class PDFConversionService {
     private float rgbToGray(float R, float G, float B) {
         return 0.299f * R + 0.587f * G + 0.114f * B;
     }
-    private List<Object> convertInlineColorsToGray(List<Object> tokens) throws IOException {
+    private List<Object> convertInlineColorsToGray(List<Object> tokens, PDPage page) throws IOException {
         List<Object> newTokens = new ArrayList<>();
         for (int i = 0; i < tokens.size(); i++) {
             Object token = tokens.get(i);
@@ -161,6 +219,11 @@ public class PDFConversionService {
                             tokens.get(i - 2) instanceof COSNumber y &&
                             tokens.get(i - 1) instanceof COSNumber k) {
 
+                        newTokens.remove(newTokens.size() - 1); // k
+                        newTokens.remove(newTokens.size() - 1); // y
+                        newTokens.remove(newTokens.size() - 1); // m
+                        newTokens.remove(newTokens.size() - 1); // c
+
                         float cVal = c.floatValue();
                         float mVal = m.floatValue();
                         float yVal = y.floatValue();
@@ -180,6 +243,16 @@ public class PDFConversionService {
                         newTokens.add(COSFloat.get(String.valueOf(gray)));
                         newTokens.add(Operator.getOperator(name.equals("k") ? "g" : "G"));
                     }
+                }
+                else if (name.equals("scn") && tokens.get(i - 1) instanceof COSNumber tint) {
+                    newTokens.remove(newTokens.size() - 1);
+                    float tintVal = tint.floatValue();
+//                    if(tintVal == 0) {
+//                        tintVal = 1f;
+//
+//                    }
+                    newTokens.add(COSInteger.get(String.valueOf(tintVal)));
+                    newTokens.add(Operator.getOperator("scn"));
                 }
                 else {
                     newTokens.add(token);
