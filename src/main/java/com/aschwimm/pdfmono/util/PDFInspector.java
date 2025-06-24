@@ -17,7 +17,11 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class PDFInspector {
+    private final PDFDocumentIO pdfDocumentIO;
 
+    public PDFInspector(PDFDocumentIO pdfDocumentIO) {
+        this.pdfDocumentIO = pdfDocumentIO;
+    }
     private static final Set<String> VECTOR_OPERATORS = Set.of(
             "m", "l", "re", "c", "v", "y", "h",
             "S", "s", "f", "F", "f*", "B", "B*", "b", "b*"
@@ -58,12 +62,14 @@ public class PDFInspector {
 
 
     public void inspect(String inputPath, String outputLogPath) {
-        try (PDDocument document = loadDocument(inputPath);
+        try (PDDocument document = pdfDocumentIO.loadDocument(inputPath);
              BufferedWriter writer = new BufferedWriter(new FileWriter(outputLogPath))) {
 
             writer.write("# PDF Inspection Report\n\n");
             int pageCount = document.getNumberOfPages();
             for (int i = 0; i < pageCount; i++) {
+                System.out.printf("\rInspecting page %d of %d...          ", (i + 1), pageCount);
+                System.out.flush();
                 PDPage page = document.getPage(i);
                 writer.write("## Page " + (i + 1) + "\n");
 
@@ -75,9 +81,7 @@ public class PDFInspector {
                 inspectResources(resources, writer, 1);
                 inspectContents(page, writer, 1);
             }
-
-            System.out.println("Inspection complete. Output written to: " + outputLogPath);
-
+            System.out.println();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -177,16 +181,7 @@ public class PDFInspector {
     private String indent(int level) {
         return "  ".repeat(level);
     }
-    private PDDocument loadDocument(String inputFile) throws IOException {
 
-        try{
-            File file = new File(inputFile);
-            return Loader.loadPDF(new RandomAccessReadBufferedFile(file));
-        } catch(IOException e) {
-            System.err.println("Error loading PDF: " + e.getMessage());
-            throw e;
-        }
-    }
 
     private static class VectorGraphicInfo {
         private String colorSpace, paintOperator;
