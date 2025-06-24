@@ -1,5 +1,8 @@
 import com.aschwimm.pdfmono.service.PDFConversionService;
 import static org.assertj.core.api.Assertions.*;
+
+import com.aschwimm.pdfmono.util.PDFDocumentIO;
+import org.apache.pdfbox.pdmodel.PDDocument;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -9,10 +12,15 @@ import java.nio.file.Paths;
 
 public class PDFConversionServiceTest {
     private PDFConversionService pdfConversionService;
+    private PDFDocumentIO docLoader;
+
+
 
     @BeforeEach
-    public void setUp() {
-        pdfConversionService = new PDFConversionService();
+    public void setUp() throws IOException {
+        docLoader = new PDFDocumentIO();
+
+        pdfConversionService = new PDFConversionService(docLoader);
     }
 
 
