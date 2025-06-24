@@ -1,5 +1,7 @@
 package com.aschwimm.pdfmono.service;
 
+import com.aschwimm.pdfmono.util.ColorConverter;
+import com.aschwimm.pdfmono.util.PDFDocumentIO;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.contentstream.operator.Operator;
 import org.apache.pdfbox.cos.*;
@@ -38,7 +40,11 @@ public class PDFConversionService {
     private Stack<PDColorSpace> nonStrokingColorSpaceStack;
     private Stack<PDColorSpace> strokingColorSpaceStack;
     int csCount = 0;
+    private final PDFDocumentIO pdfDocumentIO;
 
+    public PDFConversionService(PDFDocumentIO pdfDocumentIO) {
+        this.pdfDocumentIO = pdfDocumentIO;
+    }
     public boolean convertToBlackAndWhite(String inputFile, String outputFile) {
         File input = new File(inputFile);
         File output = new File(outputFile);
@@ -53,14 +59,14 @@ public class PDFConversionService {
             return false;
         }
 
-        try (PDDocument document = loadDocument(inputFile)) {
+        try (PDDocument document = pdfDocumentIO.loadDocument(inputFile)) {
             for(PDPage page : document.getPages()) {
                 convertPageToGrayscale(document, page);
                 convertEmbeddedImagesToGrayscale(document, page);
                 convertSeparationColorSpaceToGray(document, page);
             }
 
-            saveDocument(document, outputFile);
+            document.save(outputFile);
             return true;
         } catch (IOException e) {
             System.err.println("Error during conversion: " + e.getMessage());
@@ -68,17 +74,7 @@ public class PDFConversionService {
         }
 
     }
-    // Update how PDF files are loaded in PDFBox 3.0.5
-    private PDDocument loadDocument(String inputFile) throws IOException {
 
-        try{
-            File file = new File(inputFile);
-            return Loader.loadPDF(new RandomAccessReadBufferedFile(file));
-        } catch(IOException e) {
-            System.err.println("Error loading PDF: " + e.getMessage());
-            throw e;
-        }
-    }
     // This will only convert vector-based content like text, not inline vector paths like vector images in the content stream
    private void convertPageToGrayscale(PDDocument document, PDPage page) throws IOException {
         PDFStreamParser parser = new PDFStreamParser(page);
@@ -185,16 +181,6 @@ public class PDFConversionService {
             }
         }
     }
-    private void saveDocument(PDDocument document, String outputPath) throws IOException {
-        try (document) {
-            document.save(outputPath);
-        }
-    }
-
-    // This method converts an RGB color while preserving luminance
-    private float rgbToGray(float R, float G, float B) {
-        return 0.299f * R + 0.587f * G + 0.114f * B;
-    }
     private List<Object> convertInlineColorsToGray(List<Object> tokens, PDPage page) throws IOException {
         List<Object> newTokens = new ArrayList<>();
         for (int i = 0; i < tokens.size(); i++) {
@@ -203,11 +189,11 @@ public class PDFConversionService {
                 String name = operator.getName();
 
                 if(name.equals("rg") || name.equals("RG")) {
-                    float r = ((COSNumber) newTokens.remove(newTokens.size() - 3)).floatValue();
-                    float g = ((COSNumber) newTokens.remove(newTokens.size() - 2)).floatValue();
-                    float b = ((COSNumber) newTokens.remove(newTokens.size() - 1)).floatValue();
+                    int r = ((COSNumber) newTokens.remove(newTokens.size() - 3)).intValue();
+                    int g = ((COSNumber) newTokens.remove(newTokens.size() - 2)).intValue();
+                    int b = ((COSNumber) newTokens.remove(newTokens.size() - 1)).intValue();
 
-                    float gray = rgbToGray(r,g,b);
+                    float gray = ColorConverter.rgbToGray(r,g,b);
 
                     newTokens.add(COSFloat.get(String.valueOf(gray)));
                     newTokens.add(Operator.getOperator(name.equals("rg") ? "g" : "G"));
@@ -238,7 +224,7 @@ public class PDFConversionService {
                         }
 
                         float[] rgb = PDDeviceCMYK.INSTANCE.toRGB(new float[] { cVal, mVal, yVal, kVal });
-                        float gray = rgbToGray(rgb[0], rgb[1], rgb[2]);
+                        float gray = ColorConverter.rgbToGray(rgb);
 
                         newTokens.add(COSFloat.get(String.valueOf(gray)));
                         newTokens.add(Operator.getOperator(name.equals("k") ? "g" : "G"));
