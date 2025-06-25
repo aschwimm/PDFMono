@@ -1,4 +1,4 @@
-# PDFMono - PDF Conversion and Analysis
+# PDFMono
 
 A versatile command-line utility for processing PDF documents. This tool can convert PDFs to grayscale, and generate detailed markdown reports about a PDF's internal structure and content. Built with Java 21 and powered by Apache PDFBox.
 
@@ -10,6 +10,7 @@ A versatile command-line utility for processing PDF documents. This tool can con
 * [Usage](#usage)
     * [Grayscale Conversion](#grayscale-conversion-usage)
     * [PDF Internal Report](#pdf-internal-report-usage)
+* [Known Limitations and Issues](#known-limitations-and-issues)
 * [Contributing](#contributing)
 * [License](#license)
 
@@ -105,6 +106,11 @@ This command generates a Markdown file containing detailed information about the
 * `<input-path>`: **(Required)** The path to the source PDF file to be converted.
 * `<output-path>`: **(Required)** The path where the new grayscale PDF will be saved
 * `--inspect`: **(Required)** Required argument for inspection and report creation
+
+## Known Limitations and Issues
+* **Text Unsearchable:** Converting pages with text to images and applying grayscale conversion removes a PDF reader's ability to search within the document for text.
+* **Increased File Size:** Generating a PDF where each page is an image increases file size by around 50 to 60 percent.
+* **Accessibility Issues:** Rendering pages as images prevents screen readers from parsing text and alternative text for images in original PDF is lost.
 
 ## Contributing
 
