@@ -7,6 +7,7 @@ A versatile command-line utility for processing PDF documents. This tool can con
 * [Features](#features)
 * [How It Works](#how-it-works)
 * [Requirements](#requirements)
+* [Download](#download)
 * [Usage](#usage)
     * [Grayscale Conversion](#grayscale-conversion-usage)
     * [PDF Internal Report](#pdf-internal-report-usage)
@@ -82,6 +83,9 @@ The report generation involves:
 ## Requirements
 
 * **Java Development Kit (JDK) 21 or newer.**
+## Download
+
+You can download the latest executable JAR file from the [**latest GitHub Release**](https://github.com/aschwimm/PDFMono/releases/latest).
 
 ## Usage
 
