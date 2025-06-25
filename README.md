@@ -121,4 +121,4 @@ For major changes or new features, it's recommended to open an [issue](https://g
 
 ## License
 
-This project is open-source and available under the [**MIT License**](LICENSE.md). You are free to use, modify, and distribute this software, provided the original copyright and license notice are included.
+This project is open-source and available under the [**MIT License**](LICENSE). You are free to use, modify, and distribute this software, provided the original copyright and license notice are included.
