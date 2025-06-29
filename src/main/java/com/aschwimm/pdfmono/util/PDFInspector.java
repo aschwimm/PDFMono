@@ -42,7 +42,7 @@ public class PDFInspector {
             Map.entry("K",  "DeviceCMYK (stroking)")
     );
     /*
-    Map of currently identifiable fill operators that appear in content stream
+    Maps of currently identifiable fill, stroke, and fill/stroke operators that appear in content stream
      */
     private static final Map<String, String> FILL_OPERATORS = Map.of(
             "f", "Filled vector path (nonzero rule)",
@@ -73,7 +73,9 @@ public class PDFInspector {
     }
 
 
-
+    /*
+    Handles core logic, PDDocument is loaded and its pages iterated over, resources and contents of each page and written to output file in loop
+     */
     public void inspect(String inputPath, String outputLogPath) {
 
         try (PDDocument document = pdfDocumentIO.loadDocument(inputPath);
@@ -100,7 +102,9 @@ public class PDFInspector {
             e.printStackTrace();
         }
     }
-
+    /*
+    Recursively traverse page resources, identifying images and forms and writing them to file
+     */
     private void inspectResources(PDResources resources, BufferedWriter writer, int indentLevel) throws IOException {
         if (resources == null) return;
 
@@ -115,7 +119,10 @@ public class PDFInspector {
             }
         }
     }
-
+    /*
+    Traverses list of tokens in page's content stream and identifies tokens that are associated with colorspaces and drawing operators
+    to identify graphics drawn in page's content stream
+     */
     private void inspectContents(PDPage page, BufferedWriter writer, int indentLevel) throws IOException {
         PDFStreamParser parser = new PDFStreamParser(page);
         List<Object> tokens = parser.parse();
@@ -164,7 +171,9 @@ public class PDFInspector {
             }
         }
     }
-
+    /*
+    Retrieves the information about an image found on a page, then formats the information to be written to output file
+     */
     private void logImageInfo(BufferedWriter writer, String name, PDImageXObject image, int indentLevel) throws IOException {
         writer.write(indent(indentLevel) + "- Image XObject: " + name + "\n");
         writer.write(indent(indentLevel + 1) + "* Width: " + image.getWidth() + "\n");
@@ -174,7 +183,9 @@ public class PDFInspector {
         writer.write(indent(indentLevel + 1) + "* IsStencil: " + image.isStencil() + "\n");
         writer.write(indent(indentLevel + 1) + "* Suffix: " + image.getSuffix() + "\n");
     }
-
+    /*
+    Makes uses of a VectorGraphicInfo object to retrieve properties of a graphic drawn in page's content stream, then formats that information to be written to output file
+     */
     private void logVectorPathInfo(BufferedWriter writer, VectorGraphicInfo vectorGraphicInfo, int indentLevel) throws IOException {
         writer.write(indent(indentLevel) + "- Inline Vector Graphic\n");
         writer.write(indent(indentLevel + 1) + "* ColorSpace: " + vectorGraphicInfo.getColorSpace() + "\n");
@@ -191,12 +202,17 @@ public class PDFInspector {
 
         writer.write(indent(indentLevel + 1) + "* Paint Operator: " + vectorGraphicInfo.getPaintOperator() + "\n");
     }
-
+    // Indents strings of page information to file, makes it easier to set indent level and quickly identify level indentation in logImageInfo and logVectorPathInfo
     private String indent(int level) {
         return "  ".repeat(level);
     }
 
 
+    /*
+    Helper class that represents a graphic drawn in a page's content stream
+    Since these graphics don't exist as objects inside the PDF, they have to be constructed by parsing colorspace, paint, draw etc. operators that comprise them
+    This object is used to store information about a single graphic that can be retrieved by other methods as needed
+     */
     private static class VectorGraphicInfo {
         private String colorSpace, paintOperator;
         private Set<List<Float>> CMYKValues;
@@ -241,7 +257,10 @@ public class PDFInspector {
             this.GrayValues = new ArrayList<>(GrayValues);
         }
     }
-
+    /*
+    Associates colors in a CMYK colorspace with a color approximation like black, red, green, etc. and also returns the RGB equivalent
+    Output is written to file alongside the path drawn graphic in  content stream
+     */
     private static class ColorMapper {
 
         private static final Map<String, int[]> NAMED_COLORS = Map.ofEntries(
@@ -260,7 +279,9 @@ public class PDFInspector {
 
 
         );
-
+        /*
+        Converts CMYK operands to RGB, then finds closest color in class's NAMED_COLORS field to RGB in Euclidean distance
+         */
         public static String getClosestColorName(List<Float> cmyk) {
             float c = cmyk.get(0);
             float m = cmyk.get(1);
