@@ -19,13 +19,20 @@ import java.util.stream.Collectors;
 public class PDFInspector {
     private final PDFDocumentIO pdfDocumentIO;
 
+    // Constructor instantiates loader dependency
     public PDFInspector(PDFDocumentIO pdfDocumentIO) {
         this.pdfDocumentIO = pdfDocumentIO;
     }
+    /*
+    Unused: Set of draw operators that can appear in the content stream
+     */
     private static final Set<String> VECTOR_OPERATORS = Set.of(
             "m", "l", "re", "c", "v", "y", "h",
             "S", "s", "f", "F", "f*", "B", "B*", "b", "b*"
     );
+    /*
+    Map of color space operators that appear in content stream as keys with their associated colorspace names
+     */
     private static final Map<String, String> colorOperatorToColorSpace = Map.ofEntries(
             Map.entry("rg", "DeviceRGB (nonstroking)"),
             Map.entry("RG", "DeviceRGB (stroking)"),
@@ -34,6 +41,9 @@ public class PDFInspector {
             Map.entry("k",  "DeviceCMYK (nonstroking)"),
             Map.entry("K",  "DeviceCMYK (stroking)")
     );
+    /*
+    Map of currently identifiable fill operators that appear in content stream
+     */
     private static final Map<String, String> FILL_OPERATORS = Map.of(
             "f", "Filled vector path (nonzero rule)",
             "f*", "Filled vector path (even-odd rule)"
@@ -50,6 +60,9 @@ public class PDFInspector {
             "b", "Closed, filled and stroked vector path (nonzero rule)",
             "b*", "Closed, filled and stroked vector path (even-odd rule)"
     );
+    /*
+    This Map functions as a main registry of all currently identifiable colorspace and paint operators
+     */
     private static final Map<String, String> ALL_PAINT_OPERATORS;
     static {
         Map<String, String> all = new HashMap<>();
@@ -62,6 +75,7 @@ public class PDFInspector {
 
 
     public void inspect(String inputPath, String outputLogPath) {
+
         try (PDDocument document = pdfDocumentIO.loadDocument(inputPath);
              BufferedWriter writer = new BufferedWriter(new FileWriter(outputLogPath))) {
 
