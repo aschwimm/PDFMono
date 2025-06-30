@@ -121,11 +121,8 @@ public class PDFMono {
             }
 
             else if (arg.equals("--inspect")) {
-                // Temporary solution: concat .md file extension for outputPath arg until PDFInspector class is updated
-                // TODO: PDFInspector should handle file extensions not main
                 PDFDocumentIO pdfDocumentIO = new PDFDocumentIO();
                 PDFInspector inspector = new PDFInspector(pdfDocumentIO);
-                outputPath += ".md";
                 System.out.println("Inspecting " + inputPath + "...");
                 try {
                     inspector.inspect(inputPath, outputPath);

@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 public class PDFInspector {
     private final PDFDocumentIO pdfDocumentIO;
 
-    // Constructor instantiates loader dependency
+    // Constructor injection of document loader dependency
     public PDFInspector(PDFDocumentIO pdfDocumentIO) {
         this.pdfDocumentIO = pdfDocumentIO;
     }
@@ -77,7 +77,7 @@ public class PDFInspector {
     Handles core logic, PDDocument is loaded and its pages iterated over, resources and contents of each page and written to output file in loop
      */
     public void inspect(String inputPath, String outputLogPath) {
-
+        outputLogPath = outputLogPath + ".md";
         try (PDDocument document = pdfDocumentIO.loadDocument(inputPath);
              BufferedWriter writer = new BufferedWriter(new FileWriter(outputLogPath))) {
 
