@@ -21,11 +21,14 @@ import java.util.stream.IntStream;
 public class PDFPageToImageToGrayscale {
 
     private final PDFDocumentIO pdfDocumentIO;
-
+    // Constructor injection of document loader dependency
     public PDFPageToImageToGrayscale(PDFDocumentIO pdfDocumentIO) {
         this.pdfDocumentIO = pdfDocumentIO;
     }
 
+    /*
+    Converts pages in a document to RGB images, applies grayscale conversion, then constructs a new PDDocument from these images that's created at specified output path
+     */
     public void convertToGrayscalePDF(String inputPdfPath, String outputPdfPath, float dpi) throws Exception {
         File input = new File(inputPdfPath);
         File output = new File(outputPdfPath);
@@ -44,23 +47,24 @@ public class PDFPageToImageToGrayscale {
 
                 System.out.printf("\rProcessing page %d of %d...          ", (i + 1), pageCount);
                 System.out.flush();
-                // FIXED: Use renderImageWithDPI instead of renderImage
+                    // 1. Assigned the current page rendered as an RGB image
                     BufferedImage image = renderer.renderImageWithDPI(i, dpi, ImageType.RGB);
+                    // 2. Convert image to grayscale
                     BufferedImage grayScaleImage = convertToGrayscaleWithGamma(image);
-
+                    // 3. Get current page and retrieve its dimensions
                     PDPage originalPage = document.getPage(i);
                     PDRectangle originalPageSize = originalPage.getMediaBox();
-
+                    // 4. Create new page of a size that matches original page and add it to output PDDocument document
                     PDPage newPage = new PDPage(originalPageSize);
                     outputDocument.addPage(newPage);
-
+                    // 5. Now that a page has been created and added to the document, an ImageXObject is created from the BufferedImage then linked to output document's Resource dictionary
                     PDImageXObject pdImage = PDImageXObject.createFromByteArray(
                             outputDocument,
                             bufferedImageToByteArray(grayScaleImage, "JPEG"),
                             "grayscale_page_" + (i + 1)
                     );
 
-                    // Add image to the page
+                    // 6. Image is added to page with a reference to the image in document's Resource dictionary
                     try (PDPageContentStream contentStream = new PDPageContentStream(outputDocument, newPage)) {
                         // Scale image to fit the page exactly
                         contentStream.drawImage(pdImage, 0, 0,
@@ -73,7 +77,6 @@ public class PDFPageToImageToGrayscale {
                     grayScaleImage.flush();
             }
             System.out.println();
-            // FIXED: Save outputDocument instead of input document
             outputDocument.save(outputPdfPath);
             System.out.println("All pages processed. Output document saved.");
         } catch (IOException e) {
@@ -85,189 +88,25 @@ public class PDFPageToImageToGrayscale {
 
     // Helper method to convert BufferedImage to byte array
     private static byte[] bufferedImageToByteArray(BufferedImage image, String format) throws IOException {
-        try (java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream()) {
-            javax.imageio.ImageIO.write(image, format, baos);
-            return baos.toByteArray();
+        try (java.io.ByteArrayOutputStream byteArrayOutputStream = new java.io.ByteArrayOutputStream()) {
+            javax.imageio.ImageIO.write(image, format, byteArrayOutputStream);
+            return byteArrayOutputStream.toByteArray();
         }
     }
 
-    private static BufferedImage convertToGrayscaleLuminance(BufferedImage originalImage) {
-        BufferedImage grayscaleImage = new BufferedImage(
-                originalImage.getWidth(),
-                originalImage.getHeight(),
-                BufferedImage.TYPE_BYTE_GRAY
-        );
-
-        // Brightness adjustment factor (1.0 = no change, >1.0 = brighter, <1.0 = darker)
-        float brightnessBoost = 1.2f;
-
-        for (int y = 0; y < originalImage.getHeight(); y++) {
-            for (int x = 0; x < originalImage.getWidth(); x++) {
-                int rgb = originalImage.getRGB(x, y);
-
-                // Extract RGB components
-                int red = (rgb >> 16) & 0xFF;
-                int green = (rgb >> 8) & 0xFF;
-                int blue = rgb & 0xFF;
-
-                // Calculate luminance using standard formula
-                float gray = (0.299f * red + 0.587f * green + 0.114f * blue);
-
-                // Apply brightness boost
-                gray *= brightnessBoost;
-
-                // Clamp to valid range
-                int grayValue = Math.min(255, Math.max(0, (int) gray));
-
-                // Create grayscale RGB value
-                int grayRGB = (grayValue << 16) | (grayValue << 8) | grayValue;
-                grayscaleImage.setRGB(x, y, grayRGB);
-            }
-        }
-
-        return grayscaleImage;
-    }
-
-    // Alternative grayscale conversion methods with brightness adjustments
-
-
-    // Method 2: Contrast and brightness adjustment
-    private static BufferedImage convertToGrayscaleWithContrast(BufferedImage originalImage) {
-        BufferedImage grayscaleImage = new BufferedImage(
-                originalImage.getWidth(),
-                originalImage.getHeight(),
-                BufferedImage.TYPE_BYTE_GRAY
-        );
-
-        // Adjustment parameters
-        float brightness = 30f;  // Add this value to brightness (-100 to +100)
-        float contrast = 1.2f;   // Multiply contrast (0.5 = low contrast, 2.0 = high contrast)
-
-        for (int y = 0; y < originalImage.getHeight(); y++) {
-            for (int x = 0; x < originalImage.getWidth(); x++) {
-                int rgb = originalImage.getRGB(x, y);
-
-                // Extract RGB components
-                int red = (rgb >> 16) & 0xFF;
-                int green = (rgb >> 8) & 0xFF;
-                int blue = rgb & 0xFF;
-
-                // Calculate luminance
-                float gray = (0.299f * red + 0.587f * green + 0.114f * blue);
-
-                // Apply contrast (center around 128)
-                gray = ((gray - 128) * contrast) + 128;
-
-                // Apply brightness
-                gray += brightness;
-
-                // Clamp to valid range
-                int grayValue = Math.min(255, Math.max(0, (int) gray));
-
-                // Create grayscale RGB value
-                int grayRGB = (grayValue << 16) | (grayValue << 8) | grayValue;
-                grayscaleImage.setRGB(x, y, grayRGB);
-            }
-        }
-
-        return grayscaleImage;
-    }
-
-    // Method 3: Histogram equalization for better distribution
-    private static BufferedImage convertToGrayscaleWithHistogramEqualization(BufferedImage originalImage) {
-        BufferedImage grayscaleImage = new BufferedImage(
-                originalImage.getWidth(),
-                originalImage.getHeight(),
-                BufferedImage.TYPE_BYTE_GRAY
-        );
-
-        int width = originalImage.getWidth();
-        int height = originalImage.getHeight();
-        int totalPixels = width * height;
-
-        // First pass: convert to grayscale and build histogram
-        int[] histogram = new int[256];
-        int[][] grayValues = new int[height][width];
-
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                int rgb = originalImage.getRGB(x, y);
-
-                int red = (rgb >> 16) & 0xFF;
-                int green = (rgb >> 8) & 0xFF;
-                int blue = rgb & 0xFF;
-
-                int gray = (int) (0.299 * red + 0.587 * green + 0.114 * blue);
-                grayValues[y][x] = gray;
-                histogram[gray]++;
-            }
-        }
-
-        // Build cumulative distribution function
-        int[] cdf = new int[256];
-        cdf[0] = histogram[0];
-        for (int i = 1; i < 256; i++) {
-            cdf[i] = cdf[i - 1] + histogram[i];
-        }
-
-        // Second pass: apply histogram equalization
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                int originalGray = grayValues[y][x];
-                int equalizedGray = (int) ((cdf[originalGray] * 255.0) / totalPixels);
-
-                int grayRGB = (equalizedGray << 16) | (equalizedGray << 8) | equalizedGray;
-                grayscaleImage.setRGB(x, y, grayRGB);
-            }
-        }
-
-        return grayscaleImage;
-    }
-
-    // Method 4: Simple averaging with brightness boost
-    private static BufferedImage convertToGrayscaleAverage(BufferedImage originalImage) {
-        BufferedImage grayscaleImage = new BufferedImage(
-                originalImage.getWidth(),
-                originalImage.getHeight(),
-                BufferedImage.TYPE_BYTE_GRAY
-        );
-
-        float brightnessBoost = 1.3f; // Adjust this value
-
-        for (int y = 0; y < originalImage.getHeight(); y++) {
-            for (int x = 0; x < originalImage.getWidth(); x++) {
-                int rgb = originalImage.getRGB(x, y);
-
-                // Extract RGB components
-                int red = (rgb >> 16) & 0xFF;
-                int green = (rgb >> 8) & 0xFF;
-                int blue = rgb & 0xFF;
-
-                // Simple average instead of luminance formula
-                float gray = (red + green + blue) / 3.0f;
-
-                // Apply brightness boost
-                gray *= brightnessBoost;
-
-                // Clamp to valid range
-                int grayValue = Math.min(255, Math.max(0, (int) gray));
-
-                int grayRGB = (grayValue << 16) | (grayValue << 8) | grayValue;
-                grayscaleImage.setRGB(x, y, grayRGB);
-            }
-        }
-
-        return grayscaleImage;
-    }
-
+    /*
+    Images are converted to grayscale with gamma correction to prevent colors converted to grayscale from becoming too dark
+    Conversion is done pixel by pixel in parallel
+     */
     private static BufferedImage convertToGrayscaleWithGamma(BufferedImage originalImage) {
         BufferedImage grayscaleImage = new BufferedImage(
                 originalImage.getWidth(),
                 originalImage.getHeight(),
                 BufferedImage.TYPE_BYTE_GRAY
         );
-
+        // Default gamma value
         double gamma = 2.2;
+        // Inverse gamma used to linearize the luminance by removing gamma intensity from grayscale values
         double invGamma = 1.0 / gamma;
 
         int width = originalImage.getWidth();
@@ -276,24 +115,23 @@ public class PDFPageToImageToGrayscale {
         // Process rows in parallel for better performance on large images
         IntStream.range(0, height).parallel().forEach(y -> {
             for (int x = 0; x < width; x++) {
+                // RGB is a packed 32-bit ARGB pixel (alpha-red-green-blue)
                 int rgb = originalImage.getRGB(x, y);
-
-                // Extract RGB components
+                // Shift right 16 bits placing red value in lowest 8 bits, then mask lowest 8 bits discarding alpha value
                 int red = (rgb >> 16) & 0xFF;
+                // Shift right 8 bits placing green value in lowest 8 bits, then mask lowest bits discarding alpha and red values
                 int green = (rgb >> 8) & 0xFF;
+                // Blue is already in the lowest 8 bits, masking discards alpha, red and green values
                 int blue = rgb & 0xFF;
-
-                // Calculate luminance
+                // Apply standard grayscale conversion and normalize to 0-1 for normalized intensity
                 double gray = (ColorConverter.rgbToGray(red,green,blue)) / 255.0;
-
-                // Apply gamma correction
+                // Removes gamma encoding from the intensity by raising to the power of
                 gray = Math.pow(gray, invGamma);
-
-                // Convert back to 0-255 range
+                // Convert back into 8 bit range with bounds for overflow and underflow
                 int grayValue = (int) Math.min(255, Math.max(0, gray * 255));
-
-                // Create grayscale RGB value
+                // Convert gray values back into RGB integer by shifting the gray value into each 8 bit position, alpha channel is ignored and is set to 0
                 int grayRGB = (grayValue << 16) | (grayValue << 8) | grayValue;
+                // Grayscale RGB pixel replaces colored RGB pixel in pixel array
                 grayscaleImage.setRGB(x, y, grayRGB);
             }
         });
