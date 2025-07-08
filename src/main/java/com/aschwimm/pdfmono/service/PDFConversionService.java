@@ -23,7 +23,11 @@ import java.util.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.List;
-
+/*
+This class is a work in progress and not currently implemented. It's a much more robust solution to the grayscale conversion problem, modifying each page's color in-place instead of "flattening" the pages by
+converting them to images then converting to grayscale. When this class is implemented it would convert to grayscale while preserving the ability to search for text within the document as well as preserving accessibility features
+such as alternate text for images.
+ */
 public class PDFConversionService {
     private Stack<PDColorSpace> nonStrokingColorSpaceStack;
     private Stack<PDColorSpace> strokingColorSpaceStack;
